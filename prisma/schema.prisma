@@ -195,6 +195,7 @@ model ChatMessage {
   toolCalls       Json?
   groundedFactIds String[]    @default([])
   guardVerdict    String?
+  cards           Json?
   createdAt       DateTime    @default(now())
 
   @@index([sessionId, createdAt])

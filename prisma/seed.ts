@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { PrismaClient, type Language, type LeadSource, type VisitStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { config } from "dotenv";

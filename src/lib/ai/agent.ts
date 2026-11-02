@@ -2,13 +2,15 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { Language, Prisma, PrismaClient } from "@prisma/client";
 import { createLead } from "@/lib/leads/create";
 import { applyOptOut } from "@/lib/leads/consent";
-import { istDateKey, formatDate } from "@/lib/time";
+import { bookVisit } from "@/lib/booking/book";
+import { t } from "@/lib/i18n";
+import { istDateKey, formatDate, formatDateTime } from "@/lib/time";
 import { COPY, line } from "./copy";
 import { guardReply, type GuardResult } from "./guard";
 import { asksForDiscount, asksForHuman, detectScriptLanguage, isOptOut } from "./language";
 import type { ModelProvider } from "./provider";
 import { SYSTEM_RULES, contextBlock } from "./prompt";
-import { TOOLS, handOff, runTool, type ChatCard, type TurnContext } from "./tools";
+import { TOOLS, bookingCard, handOff, runTool, type ChatCard, type TurnContext } from "./tools";
 
 export const MODEL_DEADLINE_MS = 8_000;
 const MAX_TOOL_ROUNDS = 5;
@@ -79,20 +81,7 @@ export async function handleBuyerMessage(
   await db.chatMessage.create({ data: { sessionId: session.id, role: "BUYER", content: text, language, createdAt: now } });
   if (lead.status === "NEW") await db.lead.update({ where: { id: lead.id }, data: { status: "ENGAGED" } });
 
-  const ctx: TurnContext = {
-    db,
-    sessionId: session.id,
-    leadId: lead.id,
-    language,
-    now,
-    evidence: { facts: [], toolText: [], buyerText: [] },
-    groundedFactIds: new Set(),
-    searches: [],
-    cards: [],
-    handoff: null,
-    slotsOffered: false,
-    booked: false,
-  };
+  const ctx = newContext(db, { id: session.id, leadId: lead.id, language }, now);
 
   // Deterministic intercepts: these never depend on the model.
   if (isOptOut(text)) {
@@ -199,6 +188,58 @@ async function runModelLoop(
   }
 }
 
+function newContext(db: PrismaClient, session: { id: string; leadId: string; language: Language }, now: Date): TurnContext {
+  return {
+    db,
+    sessionId: session.id,
+    leadId: session.leadId,
+    language: session.language,
+    now,
+    evidence: { facts: [], toolText: [], buyerText: [] },
+    groundedFactIds: new Set(),
+    searches: [],
+    cards: [],
+    handoff: null,
+    slotsOffered: false,
+    booked: false,
+  };
+}
+
+/**
+ * Booking from the slot picker card. Same bookVisit as the assistant's tool, but no model in
+ * the loop, so a buyer can book even while the AI is unavailable.
+ */
+export async function bookFromPicker(
+  db: PrismaClient,
+  args: { sessionId: string; slotId: string; now?: Date },
+): Promise<TurnResult | { needsContact: true }> {
+  const now = args.now ?? new Date();
+  const session = await db.chatSession.findUniqueOrThrow({ where: { id: args.sessionId }, include: { lead: true } });
+  if (!session.lead || !session.leadId) throw new Error("Chat session has no lead");
+  if (session.lead.name === "Web visitor") return { needsContact: true };
+  const ctx = newContext(db, { id: session.id, leadId: session.leadId, language: session.language }, now);
+
+  const res = await bookVisit(db, { leadId: session.leadId, slotId: args.slotId, now });
+  if (!res.ok) {
+    const project = res.alternatives[0] ? await db.project.findUnique({ where: { id: res.alternatives[0].projectId } }) : null;
+    if (project) {
+      ctx.cards.push({
+        type: "slots",
+        projectId: project.id,
+        projectName: project.name,
+        slots: res.alternatives.map((s) => ({ id: s.id, startsAt: s.startsAt.toISOString(), label: formatDateTime(s.startsAt, ctx.language) })),
+      });
+    }
+    return finish(ctx, t("slotTaken", ctx.language), "model", { verdict: `PICKER_${res.code}` });
+  }
+  ctx.booked = true;
+  const card = await bookingCard(ctx, res.visit.id);
+  ctx.cards.push(card);
+  if (!card.remindersOn && !session.lead.optedOut) ctx.cards.push({ type: "contact", reason: "booking" });
+  await maybeSeriousBuyerHandoff(ctx);
+  return finish(ctx, COPY.booked[ctx.language](card.projectName, card.label), "model", { verdict: "PICKER_BOOKED" });
+}
+
 /** Resolve or reject with the provider, but never later than the abort signal. */
 function raceAbort<T>(p: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -249,6 +290,7 @@ async function finish(
       language: ctx.language,
       toolCalls: audit.toolLog?.length ? audit.toolLog : undefined,
       groundedFactIds: [...ctx.groundedFactIds],
+      cards: ctx.cards.length ? (ctx.cards as unknown as Prisma.InputJsonValue) : undefined,
       guardVerdict: JSON.stringify({
         verdict: audit.verdict,
         violations: audit.guard?.violations ?? [],

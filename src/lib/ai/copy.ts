@@ -45,6 +45,11 @@ export const COPY = {
     GU: (exec: string) =>
       `મેં આપણી વાતચીત સેલ્સ ટીમના ${exec}ને મોકલી છે. સંપર્ક માટે કૃપા કરીને નીચેના ફોર્મમાં આપનો નંબર આપો; નહીં તો ${exec} અહીં જ જવાબ આપશે.`,
   },
+  booked: {
+    EN: (project: string, time: string) => `Your site visit to ${project} is booked for ${time}. The details are below.`,
+    HI: (project: string, time: string) => `${project} पर आपकी साइट विज़िट ${time} के लिए बुक हो गई है। विवरण नीचे है।`,
+    GU: (project: string, time: string) => `${project} ખાતે આપની સાઇટ વિઝિટ ${time} માટે બુક થઈ ગઈ છે. વિગતો નીચે છે.`,
+  },
   indicative: {
     EN: "Prices shown are indicative starting prices from our fact sheet; the final price is confirmed only by our sales team.",
     HI: "दिखाई गई कीमतें हमारी फ़ैक्ट शीट से शुरुआती संकेतात्मक कीमतें हैं; अंतिम कीमत की पुष्टि केवल हमारी सेल्स टीम करती है।",
@@ -52,6 +57,6 @@ export const COPY = {
   },
 } as const;
 
-export function line(key: Exclude<keyof typeof COPY, "handoff" | "handoffNoContact">, lang: Language): string {
+export function line(key: Exclude<keyof typeof COPY, "handoff" | "handoffNoContact" | "booked">, lang: Language): string {
   return COPY[key][lang];
 }
