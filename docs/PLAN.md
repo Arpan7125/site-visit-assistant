@@ -27,7 +27,7 @@ Scoring: Quality 50%, Problem solving 30%, Communication 20%. A narrow slice don
 - [x] `/visit/[id]` signed link with cancel
 
 ## Day 5 — Handoff and reminders
-- [x] Handoff assignment (weighted round-robin), AI summary + deterministic fallback
+- [x] Handoff assignment (weighted round-robin), deterministic summary (AI-drafted summary cut, see below)
 - [x] Lead detail with transcript, editable summary, visit outcome
 - [x] Reminder outbox, cron route, mock sender, message log
 

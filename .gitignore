@@ -16,3 +16,4 @@ next-env.d.ts
 /submission/
 .serena/
 .claude/
+.localdb/
