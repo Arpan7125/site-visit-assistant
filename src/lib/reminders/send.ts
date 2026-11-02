@@ -1,7 +1,7 @@
 import type { PrismaClient, ReminderStatus } from "@prisma/client";
 import { logActivity } from "@/lib/activity";
 import { renderTemplate } from "@/lib/messaging/templates";
-import { formatDateTime } from "@/lib/time";
+import { formatTime } from "@/lib/time";
 
 export type SendSummary = { processed: number; sent: number; skipped: number; cancelled: number };
 
@@ -36,7 +36,8 @@ export async function sendDueReminders(db: PrismaClient, now = new Date(), batch
         {
           name: lead.name.split(" ")[0],
           project: slot.project.name,
-          time: formatDateTime(slot.startsAt, lead.language),
+          // Templates say "today"/"tomorrow", so only the clock time is filled in.
+          time: formatTime(slot.startsAt, lead.language),
           address: slot.project.address,
           map: slot.project.mapUrl,
           rera: slot.project.reraNumber,

@@ -169,7 +169,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
             {lead.handoffs.length === 0 ? (
-              <p className="mt-2 text-muted">The assistant is still handling this buyer. It hands off when the buyer is serious, asks for a person, asks about price, or asks something the fact sheet doesn&apos;t cover.</p>
+              <p className="mt-2 text-muted">No handoff for this lead. The assistant hands a chat to an executive when the buyer is serious, asks for a person, asks about price, or asks something the fact sheet doesn&apos;t cover.</p>
             ) : (
               <div className="mt-3 space-y-4">
                 {lead.handoffs.map((h) => (

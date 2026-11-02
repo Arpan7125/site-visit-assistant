@@ -300,7 +300,7 @@ async function pastVisit(leadId: string, projectId: string, date: string, hour: 
       sendAt: r.sendAt,
     })),
   });
-  await sendDueReminders(db, new Date(startsAt.getTime() - MINUTE));
+  for (const r of planReminders(startsAt, bookedAt)) await sendDueReminders(db, r.sendAt);
   await db.visit.update({ where: { id: visit.id }, data: { status, outcomeAt: new Date(startsAt.getTime() + HOUR) } });
 }
 

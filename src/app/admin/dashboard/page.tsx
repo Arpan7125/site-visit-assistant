@@ -84,7 +84,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </table>
             </div>
             <p className="mt-2 text-sm text-muted">
-              *Assumption: monthly spend per source is invented (portal ₹12L, social ₹9L, website ₹3L, hoarding ₹4L, WhatsApp ₹2L; ₹30L in total, as in the brief) and pro-rated to the period. Show-up rate = visited ÷ (visited + no-show).
+              *Assumption: monthly spend per source is invented (portal ₹12L, social ₹9L, website ₹3L, hoarding ₹4L, WhatsApp ₹2L; ₹30L in total, as in the brief) and pro-rated to the period. Show-up rate = visited ÷ (visited + no-show). The demo database holds a few dozen leads, not 3,000 a month, so cost per visit here is far higher than it would be with real volume.
             </p>
           </section>
         </>

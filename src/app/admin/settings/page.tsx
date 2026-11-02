@@ -83,17 +83,30 @@ async function Slots({ projects, projectId }: { projects: { id: string; name: st
 const REMINDER_TONE = { SENT: "accent", PENDING: "neutral", CANCELLED: "neutral", SKIPPED_NO_CONSENT: "warn", SKIPPED_OPTED_OUT: "danger" } as const;
 
 async function Messages() {
-  const rows = await prisma.reminderOutbox.findMany({
-    orderBy: { sendAt: "desc" },
-    take: 60,
-    include: { visit: { include: { lead: { select: { id: true, name: true } }, slot: { include: { project: true } } } } },
-  });
-  if (!rows.length) return <EmptyState title="No messages yet">Reminders appear here once a visit is booked: one a day before and one 2 hours before.</EmptyState>;
+  const include = { visit: { include: { lead: { select: { id: true, name: true } }, slot: { include: { project: true } } } } } as const;
+  const [done, scheduled] = await Promise.all([
+    prisma.reminderOutbox.findMany({ where: { status: { not: "PENDING" } }, orderBy: { sendAt: "desc" }, take: 40, include }),
+    prisma.reminderOutbox.findMany({ where: { status: "PENDING" }, orderBy: { sendAt: "asc" }, take: 40, include }),
+  ]);
+  if (!done.length && !scheduled.length) return <EmptyState title="No messages yet">Reminders appear here once a visit is booked: one a day before and one 2 hours before.</EmptyState>;
   return (
-    <section className="space-y-3">
+    <div className="space-y-8">
       <p className="text-muted">
         Outbound WhatsApp is mocked: approved templates are rendered and recorded here instead of being sent. The cron job sends due reminders every 15 minutes and re-checks consent and opt-out at send time.
       </p>
+      <MessageList title="Sent and skipped" rows={done} />
+      <MessageList title="Scheduled" rows={scheduled} />
+    </div>
+  );
+}
+
+type OutboxRow = Awaited<ReturnType<typeof prisma.reminderOutbox.findMany<{ include: { visit: { include: { lead: { select: { id: true; name: true } }; slot: { include: { project: true } } } } } }>>>[number];
+
+function MessageList({ title, rows }: { title: string; rows: OutboxRow[] }) {
+  if (!rows.length) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="font-display text-xl">{title}</h2>
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
         {rows.map((r) => (
           <li key={r.id} className="grid gap-1 px-4 py-3 sm:grid-cols-[12rem_1fr]">
