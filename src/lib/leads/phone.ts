@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 
 /**
  * Normalise an Indian-context phone number to E.164.

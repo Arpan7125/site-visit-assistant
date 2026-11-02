@@ -5,6 +5,8 @@ const alias = { "@": path.resolve(__dirname, "src") };
 
 export default defineConfig({
   test: {
+    // Integration files share one database: run files one after another.
+    fileParallelism: false,
     projects: [
       {
         resolve: { alias },
@@ -23,8 +25,6 @@ export default defineConfig({
           environment: "node",
           setupFiles: ["tests/setup-env.ts"],
           globalSetup: ["tests/integration/global-setup.ts"],
-          // One shared database: run files one after another.
-          fileParallelism: false,
           testTimeout: 30_000,
           hookTimeout: 60_000,
         },
