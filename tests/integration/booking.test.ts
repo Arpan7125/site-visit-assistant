@@ -28,6 +28,22 @@ describe("bookVisit: no double booking", () => {
     expect(await db.visit.count({ where: { slotId: slot.id, status: "BOOKED" } })).toBe(1);
   });
 
+  it("the row lock alone prevents double booking (index temporarily dropped)", async () => {
+    const p = await makeProject();
+    const slot = await makeSlot(p.id, new Date(Date.now() + 3 * DAY));
+    const leads = await Promise.all(Array.from({ length: 20 }, () => makeLead()));
+    await db.$executeRawUnsafe(`DROP INDEX "visit_one_booked_per_slot"`);
+    try {
+      const results = await Promise.all(leads.map((l) => bookVisit(db, { leadId: l.id, slotId: slot.id })));
+      expect(results.filter((r) => r.ok)).toHaveLength(1);
+      expect(await db.visit.count({ where: { slotId: slot.id, status: "BOOKED" } })).toBe(1);
+    } finally {
+      await db.$executeRawUnsafe(
+        `CREATE UNIQUE INDEX "visit_one_booked_per_slot" ON "Visit" ("slotId") WHERE "status" = 'BOOKED'`,
+      );
+    }
+  });
+
   it("the partial unique index rejects a second BOOKED visit even when app logic is bypassed", async () => {
     const p = await makeProject();
     const slot = await makeSlot(p.id, new Date(Date.now() + 2 * DAY));
