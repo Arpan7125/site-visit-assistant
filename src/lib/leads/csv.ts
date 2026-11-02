@@ -59,7 +59,7 @@ export type ImportSummary = {
   createdIds: string[];
 };
 
-export const CSV_COLUMNS = ["name", "phone", "email", "source", "project", "bhk", "budget_min_lakh", "budget_max_lakh"];
+export const CSV_COLUMNS = ["name", "phone", "email", "source", "project", "bhk", "budget_min_lakh", "budget_max_lakh", "created_at"];
 const MAX_ROWS = 2000;
 
 /**
@@ -112,7 +112,14 @@ export async function importLeadsCsv(
       const v = col(r, name);
       return v === undefined ? undefined : Number(v.replace(/[^\d.]/g, ""));
     };
+    const rawCreated = col(r, "created_at");
+    const createdAt = rawCreated ? new Date(rawCreated) : undefined;
+    if (createdAt && Number.isNaN(createdAt.getTime())) {
+      summary.errors.push({ row: line, field: "created_at", message: `Not a date: "${rawCreated}"` });
+      continue;
+    }
     const input: LeadInput = {
+      createdAt,
       name: col(r, "name") ?? "",
       phone: col(r, "phone"),
       email: col(r, "email"),
