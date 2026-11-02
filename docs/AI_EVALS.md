@@ -41,7 +41,7 @@ Why a fake model: the hard requirements (never quote a price, never state an unl
 | Human requests | EN/HI/GU | 4/4 |
 | Discount asks | 7 positive incl. injection, 2 negatives | 9/9 |
 
-Last full run: all cases above pass (unit 74/74, integration 31/31 at commit `92bf52a`).
+Last full run: all cases above pass (unit 74/74, integration 37/37, e2e 2/2).
 
 ## What is not evaluated yet (honest gaps)
 

@@ -253,8 +253,10 @@ Every screen has loading (skeleton), empty (with the next action) and error stat
 | Layer | What | Count |
 |---|---|---|
 | Unit | phone normalisation (all three brief formats), name similarity, CSV parsing, output guard (EN/HI/GU, native digits), opt-out/human/discount detection, round-robin assignment, reminder timing, show-up rate, cost per visit, median | 74 |
-| Integration (real Postgres) | booking race at app and DB level, cancel/rebook, free-slot filters, reminder creation, idempotent and parallel cron, consent/opt-out skips, duplicate detection and merge/dismiss, CSV import errors, 14 AI behaviour cases, slot manager, fact editor, outcomes, erasure | 31 + admin suite |
-| E2E (Playwright) | buyer books a free slot and sees the pass; a second browser on the same slot gets alternatives; executive sees the lead; role access | see `tests/e2e` |
+| Integration (real Postgres) | booking race at app and DB level, cancel/rebook, free-slot filters, reminder creation, idempotent and parallel cron, consent/opt-out skips, duplicate detection and merge/dismiss, CSV import errors, 14 AI behaviour cases, slot pattern generation, refusing to disable a booked slot, fact versioning, visit outcomes, erasure | 37 |
+| E2E (Playwright, 375 px) | buyer books a free slot and sees the pass; a second browser on the same slot is told it was taken and offered alternatives; buyer asks for a person; sales head finds the lead with handoff and booking. Role access: unauthenticated 401/redirect, executive 403 on head-only pages and APIs, cron 401 without secret | 2 |
+
+All green at the last run, along with lint, typecheck and `next build`. Manual checks: production headers (CSP, frame denial, HSTS, `no-store` on visit links), the per-IP 429 limit and its localised message, and every screen clicked through in the browser.
 
 Not covered: live-model quality (§12), visual regression, load testing beyond the 20-way race, real WhatsApp delivery.
 

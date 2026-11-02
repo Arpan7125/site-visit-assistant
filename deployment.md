@@ -42,6 +42,8 @@ pnpm dev
 
 Open http://localhost:3000. To wipe and re-seed demo data: `pnpm db:seed -- --reset`.
 
+**No Docker?** `pnpm db:local` runs the official PostgreSQL 17 binaries (via `embedded-postgres`) on the same port with the same user and databases. Keep it running in its own terminal and use the commands above unchanged.
+
 Tests:
 
 ```bash

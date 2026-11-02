@@ -34,7 +34,8 @@ Scoring: Quality 50%, Problem solving 30%, Communication 20%. A narrow slice don
 ## Day 6 — Head tools and polish
 - [x] Source dashboard + flagged-chat review queue
 - [x] Fact sheet editor + slot manager
-- [ ] Empty/loading/error states, a11y pass, Playwright e2e
+- [x] Empty/loading/error states, Playwright e2e
+- [ ] Automated a11y audit (axe/Lighthouse); so far labels, focus rings and AA contrast are by design only
 
 ## Day 7 — Ship
 - [ ] Deploy (Vercel + Neon), verify live
