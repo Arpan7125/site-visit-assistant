@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EXECUTIVE
+  SALES_HEAD
+}
+
+enum LeadSource {
+  PORTAL
+  SOCIAL_AD
+  WEBSITE
+  HOARDING_CALL
+  WHATSAPP
+}
+
+enum LeadStatus {
+  NEW
+  ENGAGED
+  VISIT_BOOKED
+  VISITED
+  NO_SHOW
+  HANDED_OFF
+  LOST
+}
+
+enum Language {
+  EN
+  HI
+  GU
+}
+
+enum DuplicateState {
+  NONE
+  CONFIRMED
+  POSSIBLE
+  DISMISSED
+}
+
+enum MessageRole {
+  BUYER
+  ASSISTANT
+  SYSTEM
+  EXECUTIVE
+}
+
+enum VisitStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ReminderKind {
+  T_MINUS_1D
+  T_MINUS_2H
+}
+
+enum ReminderChannel {
+  MOCK_WHATSAPP
+  MOCK_SMS
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  SKIPPED_NO_CONSENT
+  SKIPPED_OPTED_OUT
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  assignedLeads Lead[]        @relation("AssignedExec")
+  visits        Visit[]
+  handoffs      Handoff[]
+  activities    ActivityLog[]
+}
+
+model Project {
+  id          String  @id
+  name        String
+  reraNumber  String
+  address     String
+  locality    String
+  lat         Float
+  lng         Float
+  mapUrl      String
+  tagline     String
+
+  facts FactSheetEntry[]
+  slots VisitSlot[]
+  leads Lead[]
+}
+
+model FactSheetEntry {
+  id        String   @id @default(cuid())
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+  key       String
+  category  String
+  valueEn   String
+  valueHi   String?
+  valueGu   String?
+  quotable  Boolean  @default(false)
+  version   Int      @default(1)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, key])
+  @@index([category])
+}
+
+model Lead {
+  id                String         @id
+  name              String
+  phoneE164         String?
+  phoneHash         String?
+  email             String?
+  source            LeadSource
+  extraSources      LeadSource[]   @default([])
+  projectId         String?
+  project           Project?       @relation(fields: [projectId], references: [id])
+  wantsBhk          Int?
+  budgetMinLakh     Int?
+  budgetMaxLakh     Int?
+  timeline          String?
+  language          Language       @default(EN)
+  status            LeadStatus     @default(NEW)
+  consentContact    Boolean        @default(false)
+  consentAt         DateTime?
+  optedOut          Boolean        @default(false)
+  optedOutAt        DateTime?
+  duplicateOfId     String?
+  duplicateOf       Lead?          @relation("Duplicates", fields: [duplicateOfId], references: [id])
+  duplicates        Lead[]         @relation("Duplicates")
+  duplicateState    DuplicateState @default(NONE)
+  assignedExecId    String?
+  assignedExec      User?          @relation("AssignedExec", fields: [assignedExecId], references: [id])
+  notes             String?
+  firstContactAt    DateTime       @default(now())
+  firstResponseAt   DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime       @default(now())
+
+  sessions ChatSession[]
+  visits   Visit[]
+  handoffs Handoff[]
+
+  @@index([phoneHash])
+  @@index([source])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model ChatSession {
+  id             String    @id @default(cuid())
+  leadId         String?
+  lead           Lead?     @relation(fields: [leadId], references: [id])
+  language       Language  @default(EN)
+  flagged        Boolean   @default(false)
+  flagReason     String?
+  reviewedAt     DateTime?
+  reviewedById   String?
+  humanRequested Boolean   @default(false)
+  startedAt      DateTime  @default(now())
+
+  messages ChatMessage[]
+  handoffs Handoff[]
+
+  @@index([flagged, reviewedAt])
+}
+
+model ChatMessage {
+  id              String      @id @default(cuid())
+  sessionId       String
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role            MessageRole
+  content         String
+  language        Language    @default(EN)
+  toolCalls       Json?
+  groundedFactIds String[]    @default([])
+  guardVerdict    String?
+  createdAt       DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model VisitSlot {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  startsAt  DateTime
+  endsAt    DateTime
+  capacity  Int      @default(1)
+  isActive  Boolean  @default(true)
+
+  visits Visit[]
+
+  @@unique([projectId, startsAt])
+  @@index([startsAt])
+}
+
+model Visit {
+  id          String      @id @default(cuid())
+  leadId      String
+  lead        Lead        @relation(fields: [leadId], references: [id])
+  slotId      String
+  slot        VisitSlot   @relation(fields: [slotId], references: [id])
+  executiveId String?
+  executive   User?       @relation(fields: [executiveId], references: [id])
+  status      VisitStatus @default(BOOKED)
+  createdAt   DateTime    @default(now())
+  cancelledAt DateTime?
+  outcomeAt   DateTime?
+
+  reminders ReminderOutbox[]
+
+  // Partial unique index "visit_one_booked_per_slot" ON Visit(slotId) WHERE status = 'BOOKED'
+  // lives in a raw SQL migration (Prisma cannot express partial indexes).
+  @@index([slotId])
+  @@index([leadId])
+}
+
+model Handoff {
+  id             String       @id @default(cuid())
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id])
+  sessionId      String?
+  session        ChatSession? @relation(fields: [sessionId], references: [id])
+  executiveId    String
+  executive      User         @relation(fields: [executiveId], references: [id])
+  reason         String
+  summary        String
+  summaryEdited  Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  acknowledgedAt DateTime?
+
+  @@index([executiveId, acknowledgedAt])
+}
+
+model ReminderOutbox {
+  id         String          @id @default(cuid())
+  visitId    String
+  visit      Visit           @relation(fields: [visitId], references: [id])
+  kind       ReminderKind
+  channel    ReminderChannel
+  templateId String
+  payload    Json
+  body       String?
+  sendAt     DateTime
+  sentAt     DateTime?
+  status     ReminderStatus  @default(PENDING)
+  createdAt  DateTime        @default(now())
+
+  @@unique([visitId, kind])
+  @@index([status, sendAt])
+}
+
+model MessageTemplate {
+  id                 String   @id
+  name               String
+  language           Language
+  body               String
+  requiresReraNumber Boolean  @default(true)
+  approved           Boolean  @default(true)
+
+  @@unique([name, language])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
