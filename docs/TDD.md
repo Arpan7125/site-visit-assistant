@@ -283,7 +283,7 @@ Next:
 
 ## 12. Limitations and known issues
 
-- No live-model evaluation recorded yet; guardrails are proven with a fake model only.
+- Live-model evaluation is a 9-question hand-graded spot check (docs/AI_EVALS.md); a systematic graded set is not built yet.
 - The output guard checks numbers, prices and claims; a wrong non-numeric statement is caught only by the prompt and the daily review.
 - Fact search is keyword and topic matching (with synonyms in three languages), not embeddings; unusual phrasings may miss and fall back to a handoff, which is the safe failure.
 - Rate limiting is in memory, per server instance.
