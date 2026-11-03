@@ -77,7 +77,7 @@ flowchart LR
 |---|---|---|
 | Next.js App Router, one repo | Server components read the database directly for staff screens; route handlers serve the chat. One deploy, one language. | Separate API (Express/Nest): more moving parts for a 6-week budget. |
 | PostgreSQL + Prisma | Row locks and partial unique indexes are what make "no double booking" provable. Prisma gives typed queries and migrations. | MongoDB/Firestore: no partial unique index or `SELECT … FOR UPDATE`; correctness would rest on app code alone. |
-| Claude with tool use behind `ModelProvider` | Native tool calling for search/slots/booking; the interface lets tests inject a scripted fake. | Free-form prompting with regex parsing: brittle and untestable. |
+| LLM with tool use behind `ModelProvider` (Gemini live, Claude supported) | Native tool calling for search/slots/booking. The interface lets tests inject a scripted fake and let the deployment switch vendor with one setting (`AI_PROVIDER`): the live demo moved from Claude to Gemini when the Anthropic account had no credit, with no change to tools, guard or tests. | Free-form prompting with regex parsing: brittle and untestable. |
 | Deterministic intercepts + output guard | The brief's AI rules are hard requirements, so they are enforced in code before and after the model. | Prompt-only rules: cannot be proven. |
 | Supabase Postgres via its poolers | Serverless functions use the transaction pooler (one connection each); migrations and seeding use the session pooler (Prisma `directUrl`). Row locks and the partial index behave exactly as in local Postgres; a live booking and cancellation were checked after deploy. | Neon (planned, but its terms were not accepted); any Postgres 14+ works. |
 | Auth.js credentials, JWT sessions | Small staff list, no external IdP needed for the demo. | SSO (Google Workspace): better for production; noted in "next". |
@@ -172,6 +172,8 @@ Cancelling or rescheduling cancels pending rows in the same transaction; a resch
 "STOP", "band karo", "बंद करो", "બંધ કરો" and variants (whole-message match, so "bus stop" is not an opt-out) set `optedOut`, withdraw consent, cancel pending reminders, log it and confirm in the buyer's language. The sender re-checks at send time, so an opt-out between booking and reminder is honoured.
 
 ## 6. How the AI part works
+
+**Providers.** `src/lib/ai/provider.ts` (Claude, Anthropic SDK) and `src/lib/ai/gemini.ts` (Gemini, `@google/genai`) implement one `create()` call. The Gemini adapter maps the agent's messages and tool results to Gemini contents and back, and replays the model's raw parts so thought signatures survive multi-step tool loops. The live app uses `gemini-3.5-flash-lite` at low thinking.
 
 **Prompt structure.** A stable rules block (job, hard rules, tool policy) followed by a context block (today's date in IST, reply language, the two projects with RERA numbers, and the buyer profile so far). Buyer messages are passed as conversation turns and the rules state they are untrusted data. Only guard-approved replies are replayed as history.
 

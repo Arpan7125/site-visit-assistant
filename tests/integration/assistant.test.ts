@@ -133,6 +133,16 @@ describe("assistant behaviour (fake model)", () => {
     expect((await db.lead.findUniqueOrThrow({ where: { id: s.leadId } })).language).toBe("HI");
   });
 
+  it("a reply in the wrong script (Bengali in a Gujarati chat, seen live) is blocked and flagged", async () => {
+    const s = await session("GU");
+    const model = new FakeProvider([say("অরণ্য হাইটস শ্বেলা–বোপল রোড কাছে অবস্থিত।")]);
+    const r = await handleBuyerMessage(db, model, { sessionId: s.sessionId, text: "અરણ્ય હાઇટ્સ ક્યાં આવેલું છે?" });
+    expect(r.path).toBe("guard_blocked");
+    expect(r.reply).toBe(COPY.safeFallback.GU);
+    expect((await sessionState(s.sessionId)).flagReason).toBe("GUARD_BLOCKED: WRONG_SCRIPT");
+    expect(model.requests[0].system).toContain("ગુજરાતી");
+  });
+
   it("opt-out in Gujarati sets optedOut, cancels reminders and confirms", async () => {
     const s = await session("GU");
     const r = await handleBuyerMessage(db, new FakeProvider([]), { sessionId: s.sessionId, text: "બંધ કરો" });

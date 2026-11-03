@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { guardReply, numbersIn, type GuardEvidence } from "@/lib/ai/guard";
-import { asksForDiscount, asksForHuman, asciiDigits, detectScriptLanguage, isOptOut } from "@/lib/ai/language";
+import { asksForDiscount, asksForHuman, asciiDigits, detectScriptLanguage, isOptOut, wrongScript } from "@/lib/ai/language";
 
 const quotablePrice: GuardEvidence = {
   facts: [{ id: "f1", text: "3 BHK homes start from ₹92 lakh (indicative, excluding taxes)", quotable: true }],
@@ -87,6 +87,22 @@ describe("guardReply: claims and numbers", () => {
   it("normalises Indian and native digits", () => {
     expect(asciiDigits("९२ / ૯૨")).toBe("92 / 92");
     expect(numbersIn("₹1,20,00,000 and 1,450")).toEqual(["12000000", "1450"]);
+  });
+});
+
+describe("wrongScript", () => {
+  it("blocks a Bengali-script reply in a Gujarati chat (seen live)", () => {
+    expect(wrongScript("অরণ্য হাইটস শ্বেলা–বোপল রোড কাছে অবস্থিত।", "GU")).toBe(true);
+  });
+  it("accepts the right script, with Latin names and numbers mixed in", () => {
+    expect(wrongScript("અરણ્ય હાઇટ્સ, Shela–Bopal Road પાસે છે. 3 BHK ઉપલબ્ધ છે.", "GU")).toBe(false);
+    expect(wrongScript("वसंत रेज़िडेंसी में 2 BHK हैं।", "HI")).toBe(false);
+    expect(wrongScript("Aranya Heights is in Shela.", "EN")).toBe(false);
+  });
+  it("blocks a Hindi or Gujarati reply that is all English or in the other script", () => {
+    expect(wrongScript("Aranya Heights is in Shela.", "GU")).toBe(true);
+    expect(wrongScript("વસંત રેસિડેન્સી", "HI")).toBe(true);
+    expect(wrongScript("नमस्ते", "EN")).toBe(true);
   });
 });
 

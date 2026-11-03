@@ -29,7 +29,7 @@ Generate the four secrets (`AUTH_SECRET`, `LINK_SIGNING_SECRET`, `PHONE_HASH_SEC
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-`ANTHROPIC_API_KEY` is optional locally. Without it the chat still works for booking (slot picker), opt-out, "talk to a person" and discount questions; free-text questions take the honest outage path ("a person will reply") and are handed off.
+A model key (`GEMINI_API_KEY` or `ANTHROPIC_API_KEY`) is optional locally. Without it the chat still works for booking (slot picker), opt-out, "talk to a person" and discount questions; free-text questions take the honest outage path ("a person will reply") and are handed off.
 
 Start the database, migrate, seed and run:
 
@@ -83,7 +83,11 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://site-visit-assistant.vercel
 | `DATABASE_URL_TEST` | Separate local Postgres database for integration tests |
 | `AUTH_SECRET` | Auth.js session encryption secret |
 | `APP_BASE_URL` | Public base URL of the app |
-| `ANTHROPIC_API_KEY` | Claude API key; empty = assistant runs in outage/fallback mode |
+| `AI_PROVIDER` | `gemini` or `anthropic`; default is whichever key is set (Anthropic first) |
+| `GEMINI_API_KEY` | Google Gemini API key (live demo uses Gemini) |
+| `GEMINI_MODEL` | Optional Gemini model id (default `gemini-3.5-flash-lite`) |
+| `GEMINI_THINKING` | Optional thinking level: MINIMAL, LOW (default), MEDIUM, HIGH or NONE |
+| `ANTHROPIC_API_KEY` | Claude API key; with no key for the chosen provider the assistant runs in outage/fallback mode |
 | `ANTHROPIC_MODEL` | Claude model id (default `claude-opus-5-5`) |
 | `ANTHROPIC_EFFORT` | Optional effort level for the model (default `low`, for chat latency) |
 | `CRON_SECRET` | Bearer token required by the reminder cron route |
@@ -115,7 +119,7 @@ Change or remove these accounts before any real use.
 
 - **`Can't reach database server at localhost:5432`**: Docker Desktop is not running. Start it, then `docker compose up -d --wait`.
 - **Seed says "already seeded"**: run `pnpm db:seed -- --reset` (deletes demo data only in the database `DATABASE_URL` points at).
-- **Every chat reply says "having trouble answering"**: `ANTHROPIC_API_KEY` is empty or invalid, or the model took longer than 8 s. Check server logs for `assistant model error`.
+- **Every chat reply says "having trouble answering"**: the key for `AI_PROVIDER` is missing or invalid, the account has no credit, or the model took longer than 8 s. Server logs show the reason after `assistant model error` (`vercel logs <url>`).
 - **Login loops back to the sign-in page**: `AUTH_SECRET` is missing, or `APP_BASE_URL`/host differs from the URL you opened.
 - **Integration tests refuse to run**: `DATABASE_URL_TEST` must be a local database ending in `_test`.
 - **Visit link says expired**: links are valid until a week after the visit, and only with the exact `t=` token.

@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 import { istDateKey, formatDate, formatDateTime } from "@/lib/time";
 import { COPY, line } from "./copy";
 import { guardReply, type GuardResult } from "./guard";
-import { asksForDiscount, asksForHuman, detectScriptLanguage, isOptOut } from "./language";
+import { asksForDiscount, asksForHuman, detectScriptLanguage, isOptOut, wrongScript } from "./language";
 import type { ModelProvider } from "./provider";
 import { SYSTEM_RULES, contextBlock } from "./prompt";
 import { TOOLS, bookingCard, handOff, runTool, type ChatCard, type TurnContext } from "./tools";
@@ -123,6 +123,13 @@ export async function handleBuyerMessage(
   if (allSearchesEmpty && !ctx.booked) {
     if (!ctx.handoff) await handOff(ctx, "MISSING_FACT", true);
     return finish(ctx, line("missingFact", language), "missing_fact", { verdict: "MISSING_FACT", toolLog });
+  }
+
+  // A reply the buyer cannot read (e.g. Bengali script in a Gujarati chat) is never shown.
+  if (wrongScript(replyText, language)) {
+    await handOff(ctx, "GUARD_BLOCKED", true);
+    await db.chatSession.update({ where: { id: session.id }, data: { flagReason: "GUARD_BLOCKED: WRONG_SCRIPT" } });
+    return finish(ctx, line("safeFallback", language), "guard_blocked", { verdict: "WRONG_SCRIPT", toolLog, blockedText: replyText });
   }
 
   const guard = guardReply(replyText, ctx.evidence);

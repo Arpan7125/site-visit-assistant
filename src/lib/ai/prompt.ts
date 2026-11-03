@@ -1,6 +1,11 @@
 import type { Language, Lead, Project } from "@prisma/client";
 
-const LANG_NAME: Record<Language, string> = { EN: "English", HI: "Hindi (Devanagari script)", GU: "Gujarati (Gujarati script)" };
+const LANG_NAME: Record<Language, string> = {
+  EN: "English",
+  HI: "Hindi, written in Devanagari script (हिन्दी). Do not use any other script.",
+  // Models sometimes drift from Gujarati into Bengali script; name the script and forbid others.
+  GU: "Gujarati, written in Gujarati script (ગુજરાતી). Never use Bengali, Devanagari or any other script.",
+};
 
 /** Stable part of the system prompt: rules and tool policy. */
 export const SYSTEM_RULES = `You are the virtual sales assistant for a residential developer in Ahmedabad, chatting with home buyers on the website.

@@ -13,6 +13,33 @@ export function detectScriptLanguage(text: string): Language | null {
   return null;
 }
 
+// Indian scripts other than Latin; a reply may only contain the one for its language.
+const INDIC_SCRIPTS: Record<string, RegExp> = {
+  devanagari: /[ऀ-ॿ]/,
+  bengali: /[ঀ-৿]/,
+  gurmukhi: /[਀-੿]/,
+  gujarati: /[઀-૿]/,
+  oriya: /[଀-୿]/,
+  tamil: /[஀-௿]/,
+  telugu: /[ఀ-౿]/,
+  kannada: /[ಀ-೿]/,
+  malayalam: /[ഀ-ൿ]/,
+};
+const ALLOWED_SCRIPT: Record<Language, string | null> = { EN: null, HI: "devanagari", GU: "gujarati" };
+
+/**
+ * True when the reply is not readable in the buyer's language: an Indian script other than the
+ * expected one appears, or a Hindi/Gujarati reply contains no text in its own script at all.
+ * Latin is always allowed (project names, "BHK", RERA numbers).
+ */
+export function wrongScript(reply: string, lang: Language): boolean {
+  const allowed = ALLOWED_SCRIPT[lang];
+  for (const [name, re] of Object.entries(INDIC_SCRIPTS)) {
+    if (name !== allowed && re.test(reply)) return true;
+  }
+  return allowed !== null && !INDIC_SCRIPTS[allowed].test(reply);
+}
+
 /** Convert Devanagari and Gujarati digits to ASCII so numeric checks work in every language. */
 export function asciiDigits(text: string): string {
   return text
