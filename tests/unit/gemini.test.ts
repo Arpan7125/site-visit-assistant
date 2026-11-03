@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
-import { fromGeminiParts, toGeminiContents, toGeminiTools } from "@/lib/ai/gemini";
+import { ApiError } from "@google/genai";
+import { GeminiProvider, fromGeminiParts, isCapacityError, toGeminiContents, toGeminiTools } from "@/lib/ai/gemini";
 import { selectProvider } from "@/lib/ai/provider";
 import { TOOLS } from "@/lib/ai/tools";
 
@@ -52,6 +53,46 @@ describe("Gemini adapter", () => {
     expect(fromGeminiParts([{ text: "Hello" }], "STOP")).toMatchObject({ stop_reason: "end_turn" });
     expect(fromGeminiParts([], "SAFETY").stop_reason).toBe("refusal");
     expect(fromGeminiParts([{ text: "cut" }], "MAX_TOKENS").stop_reason).toBe("max_tokens");
+  });
+});
+
+describe("GeminiProvider fallback on capacity errors", () => {
+  const req = { system: "s", messages: [{ role: "user" as const, content: "hi" }], tools: [] };
+  const opts = () => ({ signal: new AbortController().signal, timeoutMs: 1000 });
+
+  it("tries the next model on 503 high demand, and not on a 400", async () => {
+    const p = new GeminiProvider("k", "primary", ["backup"], "NONE");
+    const calls: string[] = [];
+    // Replace the network call: primary is overloaded, backup answers.
+    (p as unknown as { client: { models: { generateContent: (a: { model: string }) => unknown } } }).client = {
+      models: {
+        generateContent: async ({ model }: { model: string }) => {
+          calls.push(model);
+          if (model === "primary") throw new ApiError({ message: "high demand", status: 503 });
+          return { candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }] };
+        },
+      },
+    };
+    const res = await p.create(req, opts());
+    expect(calls).toEqual(["primary", "backup"]);
+    expect(res.content[0]).toMatchObject({ type: "text", text: "ok" });
+
+    const q = new GeminiProvider("k", "primary", ["backup"], "NONE");
+    (q as unknown as { client: { models: { generateContent: () => unknown } } }).client = {
+      models: {
+        generateContent: async () => {
+          throw new ApiError({ message: "bad request", status: 400 });
+        },
+      },
+    };
+    await expect(q.create(req, opts())).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("classifies capacity errors", () => {
+    expect(isCapacityError(new ApiError({ message: "x", status: 503 }))).toBe(true);
+    expect(isCapacityError(new ApiError({ message: "x", status: 429 }))).toBe(true);
+    expect(isCapacityError(new ApiError({ message: "x", status: 400 }))).toBe(false);
+    expect(isCapacityError(new Error("x"))).toBe(false);
   });
 });
 

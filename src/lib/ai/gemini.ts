@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenAI, ThinkingLevel, type Content, type FunctionDeclaration, type Part } from "@google/genai";
+import { ApiError, GoogleGenAI, ThinkingLevel, type Content, type FunctionDeclaration, type Part } from "@google/genai";
 import type { ModelProvider, ModelRequest, ModelResponse } from "./provider";
 
 /**
@@ -89,15 +89,24 @@ export function fromGeminiParts(parts: Part[], finishReason: string | undefined)
   return { content, stop_reason };
 }
 
+/** Capacity or rate problems on Google's side: worth trying another model, not worth waiting. */
+export function isCapacityError(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 429 || err.status >= 500);
+}
+
 export class GeminiProvider implements ModelProvider {
   readonly name: string;
   private client: GoogleGenAI;
+  private models: string[];
 
   constructor(
     apiKey: string,
-    private model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    // Stable models tried in order when the primary is overloaded (503 "high demand", seen live).
+    fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.1-flash-lite,gemini-3.6-flash").split(",").map((m) => m.trim()).filter(Boolean),
     private thinking = (process.env.GEMINI_THINKING || "LOW").toUpperCase(),
   ) {
+    this.models = [model, ...fallbacks.filter((m) => m !== model)];
     this.name = `gemini:${model}`;
     this.client = new GoogleGenAI({ apiKey });
   }
@@ -105,20 +114,30 @@ export class GeminiProvider implements ModelProvider {
   async create(req: ModelRequest, opts: { signal: AbortSignal; timeoutMs: number }): Promise<ModelResponse> {
     const contents = toGeminiContents(req.messages);
     const level = (ThinkingLevel as Record<string, ThinkingLevel>)[this.thinking];
-    const res = await this.client.models.generateContent({
-      model: this.model,
-      contents,
-      config: {
-        systemInstruction: req.system,
-        tools: [{ functionDeclarations: toGeminiTools(req.tools) }],
-        maxOutputTokens: req.maxTokens ?? 4096,
-        // The 8 s chat deadline is enforced by the abort signal. Gemini rejects server deadlines
-        // under 10 s, so no httpOptions.timeout is sent.
-        abortSignal: opts.signal,
-        ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
-      },
-    });
-    const candidate = res.candidates?.[0];
-    return fromGeminiParts(candidate?.content?.parts ?? [], candidate?.finishReason);
+    let lastError: unknown;
+    for (const model of this.models) {
+      try {
+        const res = await this.client.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: req.system,
+            tools: [{ functionDeclarations: toGeminiTools(req.tools) }],
+            maxOutputTokens: req.maxTokens ?? 4096,
+            // The chat deadline is enforced by the abort signal. Gemini rejects server deadlines
+            // under 10 s, so no httpOptions.timeout is sent; the SDK does not retry by itself.
+            abortSignal: opts.signal,
+            ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
+          },
+        });
+        const candidate = res.candidates?.[0];
+        return fromGeminiParts(candidate?.content?.parts ?? [], candidate?.finishReason);
+      } catch (err) {
+        if (!isCapacityError(err) || opts.signal.aborted) throw err;
+        console.warn(`gemini ${model} unavailable (${(err as ApiError).status}); trying next model`);
+        lastError = err;
+      }
+    }
+    throw lastError;
   }
 }
