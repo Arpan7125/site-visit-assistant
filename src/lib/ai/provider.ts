@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { GeminiProvider } from "./gemini";
 
 export type ModelRequest = {
   system: string;
@@ -53,8 +54,29 @@ export class UnavailableProvider implements ModelProvider {
   }
 }
 
+/**
+ * AI_PROVIDER picks the model vendor ("anthropic" or "gemini"). Without it, whichever key is
+ * present is used, Anthropic first. No key at all → honest outage path.
+ */
+export function selectProvider(env: Record<string, string | undefined>): "anthropic" | "gemini" | "none" {
+  const want = env.AI_PROVIDER?.toLowerCase();
+  if (want === "gemini") return env.GEMINI_API_KEY ? "gemini" : "none";
+  if (want === "anthropic") return env.ANTHROPIC_API_KEY ? "anthropic" : "none";
+  if (env.ANTHROPIC_API_KEY) return "anthropic";
+  if (env.GEMINI_API_KEY) return "gemini";
+  return "none";
+}
+
 let cached: ModelProvider | null = null;
 export function defaultProvider(): ModelProvider {
-  cached ??= process.env.ANTHROPIC_API_KEY ? new AnthropicProvider() : new UnavailableProvider();
+  if (!cached) {
+    const which = selectProvider(process.env);
+    cached =
+      which === "anthropic"
+        ? new AnthropicProvider()
+        : which === "gemini"
+          ? new GeminiProvider(process.env.GEMINI_API_KEY!)
+          : new UnavailableProvider();
+  }
   return cached;
 }
