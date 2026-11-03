@@ -86,7 +86,8 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://site-visit-assistant.vercel
 | `AI_PROVIDER` | `gemini` or `anthropic`; default is whichever key is set (Anthropic first) |
 | `GEMINI_API_KEY` | Google Gemini API key (live demo uses Gemini) |
 | `GEMINI_MODEL` | Optional Gemini model id (default `gemini-3.5-flash-lite`) |
-| `GEMINI_THINKING` | Optional thinking level: MINIMAL, LOW (default), MEDIUM, HIGH or NONE |
+| `GEMINI_THINKING` | Optional thinking level: MINIMAL (used live), LOW (default), MEDIUM, HIGH or NONE |
+| `AI_DEADLINE_MS` | Optional; how long the assistant may take before the buyer gets the fixed reply and a person (default 20000) |
 | `ANTHROPIC_API_KEY` | Claude API key; with no key for the chosen provider the assistant runs in outage/fallback mode |
 | `ANTHROPIC_MODEL` | Claude model id (default `claude-opus-5-5`) |
 | `ANTHROPIC_EFFORT` | Optional effort level for the model (default `low`, for chat latency) |
@@ -119,7 +120,7 @@ Change or remove these accounts before any real use.
 
 - **`Can't reach database server at localhost:5432`**: Docker Desktop is not running. Start it, then `docker compose up -d --wait`.
 - **Seed says "already seeded"**: run `pnpm db:seed -- --reset` (deletes demo data only in the database `DATABASE_URL` points at).
-- **Every chat reply says "having trouble answering"**: the key for `AI_PROVIDER` is missing or invalid, the account has no credit, or the model took longer than 8 s. Server logs show the reason after `assistant model error` (`vercel logs <url>`).
+- **Every chat reply says "having trouble answering"**: the key for `AI_PROVIDER` is missing or invalid, the account has no credit, or the model took longer than the deadline (`AI_DEADLINE_MS`, default 20 s). Server logs show the reason after `assistant model error` (`vercel logs <url>`).
 - **Login loops back to the sign-in page**: `AUTH_SECRET` is missing, or `APP_BASE_URL`/host differs from the URL you opened.
 - **Integration tests refuse to run**: `DATABASE_URL_TEST` must be a local database ending in `_test`.
 - **Visit link says expired**: links are valid until a week after the visit, and only with the exact `t=` token.

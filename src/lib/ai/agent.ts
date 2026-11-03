@@ -12,7 +12,9 @@ import type { ModelProvider } from "./provider";
 import { SYSTEM_RULES, contextBlock } from "./prompt";
 import { TOOLS, bookingCard, handOff, runTool, type ChatCard, type TurnContext } from "./tools";
 
-export const MODEL_DEADLINE_MS = 8_000;
+// Whole tool loop must finish within this, or the buyer gets the fixed reply and a person.
+// The brief allows 2 minutes; 20 s leaves room for a slow free-tier model. Tests use 8 s.
+export const MODEL_DEADLINE_MS = Number(process.env.AI_DEADLINE_MS) || 20_000;
 const MAX_TOOL_ROUNDS = 5;
 const HISTORY_LIMIT = 30;
 export const MAX_MESSAGE_CHARS = 1000;

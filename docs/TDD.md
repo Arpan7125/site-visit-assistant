@@ -45,7 +45,7 @@ Everything invented is listed in `docs/ASSUMPTIONS.md`. Each is an **Assumption*
 - **Assumption A13:** demo phone numbers are made up and never contacted.
 - **Assumption A14:** every web chat creates a lead.
 - **Assumption A15:** booking needs at least a name.
-- **Assumption A16:** default model and 8-second deadline.
+- **Assumption A16:** model choice and the 20-second answer deadline.
 
 ## 3. Architecture
 
@@ -130,7 +130,7 @@ sequenceDiagram
     AG->>DB: opt out, or create handoff (+flag)
     AG-->>B: fixed reply in buyer's language
   else normal question
-    AG->>M: system rules + context + history + tools (8 s deadline)
+    AG->>M: system rules + context + history + tools (20 s deadline)
     M->>AG: tool_use search_fact_sheet
     AG->>DB: keyword/topic search
     AG->>M: entries with ids (or empty + "hand off")
@@ -173,7 +173,7 @@ Cancelling or rescheduling cancels pending rows in the same transaction; a resch
 
 ## 6. How the AI part works
 
-**Providers.** `src/lib/ai/provider.ts` (Claude, Anthropic SDK) and `src/lib/ai/gemini.ts` (Gemini, `@google/genai`) implement one `create()` call. The Gemini adapter maps the agent's messages and tool results to Gemini contents and back, and replays the model's raw parts so thought signatures survive multi-step tool loops. The live app uses `gemini-3.5-flash-lite` at low thinking.
+**Providers.** `src/lib/ai/provider.ts` (Claude, Anthropic SDK) and `src/lib/ai/gemini.ts` (Gemini, `@google/genai`) implement one `create()` call. The Gemini adapter maps the agent's messages and tool results to Gemini contents and back, and replays the model's raw parts so thought signatures survive multi-step tool loops. The live app uses `gemini-3.5-flash-lite` at minimal thinking: replies are short fact lookups, and minimal thinking keeps them fast.
 
 **Prompt structure.** A stable rules block (job, hard rules, tool policy) followed by a context block (today's date in IST, reply language, the two projects with RERA numbers, and the buyer profile so far). Buyer messages are passed as conversation turns and the rules state they are untrusted data. Only guard-approved replies are replayed as history.
 
@@ -192,7 +192,7 @@ A blocked reply is replaced by "A member of our team will confirm that for you",
 
 **Missing facts.** If every fact search in the turn returned nothing, the model's reply is discarded regardless of what it says, the buyer gets "I don't have that detail… a person will confirm", and the chat is flagged `MISSING_FACT` and handed off.
 
-**When the model fails or is slow.** One 8-second deadline covers the whole tool loop (at most 5 rounds), with no SDK retries. On error, timeout, refusal or an empty reply the buyer gets a fixed "a person will reply" message in their language, the message is saved, the chat is flagged, and the lead goes to an executive. The next message works normally.
+**When the model fails or is slow.** One deadline (20 s live, `AI_DEADLINE_MS`; the brief allows 2 minutes) covers the whole tool loop (at most 5 rounds), with no SDK retries. On error, timeout, refusal or an empty reply the buyer gets a fixed "a person will reply" message in their language, the message is saved, the chat is flagged, and the lead goes to an executive. The next message works normally.
 
 **Daily review.** Flagged chats (missing fact, discount ask, guard block, outage) wait in the dashboard queue until the sales head marks them reviewed (logged).
 
