@@ -158,7 +158,7 @@ sequenceDiagram
   participant OB as ReminderOutbox
   participant CR as Cron every 15 min
   participant TL as Message log
-  BK->>OB: T-1d if still ahead; T-2h (or "now" if < 2 h away)
+  BK->>OB: T-1d if still ahead, T-2h (sent at once if under 2 h away)
   CR->>OB: due PENDING rows
   CR->>CR: visit still BOOKED? lead opted out? consent + phone?
   CR->>OB: conditional update PENDING → SENT / SKIPPED_* / CANCELLED
@@ -232,30 +232,37 @@ Key screens, captured from the live app (buyer screens at phone width, 390 px; s
 
 <p class="shots"><img src="screens/01-landing.png" alt="Landing page" width="220"></p>
 <p class="caption">Landing: one headline, one action, RERA numbers on both projects.</p>
+
 2. **Chat (`/chat`).** The first screen asks only which language to use, so the very first message is already in the buyer's language. Assistant text sits directly on the page (no bubble) and buyer messages get a soft tinted bubble, which reads as a conversation with a concierge rather than a support widget. "Talk to a person" is always in the header. At most three quick-reply chips. The composer is sticky, and new messages scroll into view only if the buyer is already at the bottom. The slot picker groups times by day. The contact form keeps the consent box unticked, with the plain-language line beside it.
 
 <p class="shots"><img src="screens/02-chat-answer.png" alt="Chat answering from the fact sheet" width="220"> <img src="screens/03-slot-picker.png" alt="Slot picker with real free times" width="220"></p>
 <p class="caption">Chat: a live Gemini answer from the fact sheet (left); the slot picker showing only genuinely free times (right).</p>
+
 3. **Visit page (`/visit/[id]`).** The same visit pass, plus "Change time" (only free slots listed) and "Cancel visit" with a confirm step. Expired links explain what to do next.
 
 <p class="shots"><img src="screens/04-visit-pass.png" alt="Visit pass" width="220"></p>
 <p class="caption">The visit pass: time, address and map, reminders, calendar, RERA number, change or cancel.</p>
+
 4. **Sign in.** One column, nothing else.
 
 <p class="shots"><img src="screens/05-login.png" alt="Staff sign in" width="520"></p>
 <p class="caption">Staff sign in.</p>
+
 5. **Leads (`/admin/leads`).** A dense but quiet table with hairline rows and no card grid; sticky filters; source tags merge when a duplicate is linked; "Not reached" is the only red. Phones are masked to the last 4 digits.
 
 <p class="shots"><img src="screens/06-leads.png" alt="Lead list" width="640"></p>
 <p class="caption">One lead list across sources, with duplicate badges and first-reply times.</p>
+
 6. **Lead / handoff (`/admin/leads/[id]`).** Left column for facts about the buyer and actions (status, notes, visit outcome); right column for what the assistant did (handoff summary, transcript with guard verdicts and facts used, activity).
 
 <p class="shots"><img src="screens/07-lead-handoff.png" alt="Lead and handoff" width="640"></p>
 <p class="caption">Handoff to a named executive with summary and transcript.</p>
+
 7. **Dashboard (`/admin/dashboard`).** Three numbers compared with the brief's targets and the "today" baseline, then the per-source table, with a thin inline bar for cost per visit. The assumed spend is labelled in a footnote under the table. The flagged-chat queue sits on the same page because reviewing it is a daily task.
 
 <p class="shots"><img src="screens/08-dashboard.png" alt="Source dashboard" width="640"></p>
 <p class="caption">Source dashboard against the brief's targets.</p>
+
 8. **Settings (`/admin/settings`).** Tabs for fact sheet (missing-translation filter, quotable flag, "how the assistant sees this" preview), slots (pattern generator plus per-slot toggles; booked slots show the buyer's name and ask before cancelling) and the message log.
 
 <p class="shots"><img src="screens/09-fact-sheet.png" alt="Fact sheet editor" width="640"> <img src="screens/10-message-log.png" alt="Message log" width="640"></p>
@@ -285,7 +292,7 @@ Every screen has loading (skeleton), empty (with the next action) and error stat
 
 All green at the last run, along with lint, typecheck and `next build`. Manual checks: production headers (CSP, frame denial, HSTS, `no-store` on visit links), the per-IP 429 limit and its localised message, and every screen clicked through in the browser.
 
-Not covered: live-model quality (§12), visual regression, load testing beyond the 20-way race, real WhatsApp delivery.
+Not covered: a systematic live-model evaluation (only a 9-question hand-graded spot check, see AI_EVALS.md), visual regression, load testing beyond the 20-way race, real WhatsApp delivery.
 
 ## 11. What I cut, and what I'd do next
 

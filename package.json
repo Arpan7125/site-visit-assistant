@@ -47,6 +47,7 @@
     "embedded-postgres": "17.10.0-beta.17",
     "eslint": "9",
     "eslint-config-next": "15.5.28",
+    "marked": "15",
     "prisma": "6",
     "tailwindcss": "4",
     "tsx": "^4.23.15",
