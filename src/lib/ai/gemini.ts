@@ -112,8 +112,9 @@ export class GeminiProvider implements ModelProvider {
         systemInstruction: req.system,
         tools: [{ functionDeclarations: toGeminiTools(req.tools) }],
         maxOutputTokens: req.maxTokens ?? 4096,
+        // The 8 s chat deadline is enforced by the abort signal. Gemini rejects server deadlines
+        // under 10 s, so no httpOptions.timeout is sent.
         abortSignal: opts.signal,
-        httpOptions: { timeout: opts.timeoutMs },
         ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
       },
     });
