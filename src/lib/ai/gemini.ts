@@ -101,9 +101,9 @@ export class GeminiProvider implements ModelProvider {
 
   constructor(
     apiKey: string,
-    model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    model = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
     // Stable models tried in order when the primary is overloaded (503 "high demand", seen live).
-    fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.1-flash-lite,gemini-3.6-flash").split(",").map((m) => m.trim()).filter(Boolean),
+    fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.6-flash,gemini-3.5-flash-lite").split(",").map((m) => m.trim()).filter(Boolean),
     private thinking = (process.env.GEMINI_THINKING || "LOW").toUpperCase(),
     private attemptMs = Number(process.env.GEMINI_ATTEMPT_MS) || 7_000,
   ) {

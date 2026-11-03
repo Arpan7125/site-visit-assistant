@@ -85,7 +85,9 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://site-visit-assistant.vercel
 | `APP_BASE_URL` | Public base URL of the app |
 | `AI_PROVIDER` | `gemini` or `anthropic`; default is whichever key is set (Anthropic first) |
 | `GEMINI_API_KEY` | Google Gemini API key (live demo uses Gemini) |
-| `GEMINI_MODEL` | Optional Gemini model id (default `gemini-3.5-flash-lite`) |
+| `GEMINI_MODEL` | Optional Gemini model id (default `gemini-3.1-flash-lite`) |
+| `GEMINI_FALLBACK_MODELS` | Optional, comma-separated models tried on overload or a stalled call (default `gemini-3.6-flash,gemini-3.5-flash-lite`) |
+| `GEMINI_ATTEMPT_MS` | Optional per-attempt limit before falling through to the next model (default 7000) |
 | `GEMINI_THINKING` | Optional thinking level: MINIMAL (used live), LOW (default), MEDIUM, HIGH or NONE |
 | `AI_DEADLINE_MS` | Optional; how long the assistant may take before the buyer gets the fixed reply and a person (default 20000) |
 | `ANTHROPIC_API_KEY` | Claude API key; with no key for the chosen provider the assistant runs in outage/fallback mode |

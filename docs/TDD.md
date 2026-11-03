@@ -173,7 +173,7 @@ Cancelling or rescheduling cancels pending rows in the same transaction; a resch
 
 ## 6. How the AI part works
 
-**Providers.** `src/lib/ai/provider.ts` (Claude, Anthropic SDK) and `src/lib/ai/gemini.ts` (Gemini, `@google/genai`) implement one `create()` call. The Gemini adapter maps the agent's messages and tool results to Gemini contents and back, and replays the model's raw parts so thought signatures survive multi-step tool loops. The live app uses `gemini-3.5-flash-lite` at minimal thinking: replies are short fact lookups, and minimal thinking keeps them fast.
+**Providers.** `src/lib/ai/provider.ts` (Claude, Anthropic SDK) and `src/lib/ai/gemini.ts` (Gemini, `@google/genai`) implement one `create()` call. The Gemini adapter maps the agent's messages and tool results to Gemini contents and back, and replays the model's raw parts so thought signatures survive multi-step tool loops. The live app uses `gemini-3.1-flash-lite` at minimal thinking (about 1 s per model round). On a 429/5xx, or when one attempt stalls past 7 s, the adapter tries `gemini-3.6-flash` then `gemini-3.5-flash-lite` within the same turn deadline. This came from live testing: `gemini-3.5-flash-lite` returned 503 "high demand" and 14 to 18 s rounds, and one request hung for the whole turn.
 
 **Prompt structure.** A stable rules block (job, hard rules, tool policy) followed by a context block (today's date in IST, reply language, the two projects with RERA numbers, and the buyer profile so far). Buyer messages are passed as conversation turns and the rules state they are untrusted data. Only guard-approved replies are replayed as history.
 
@@ -226,16 +226,40 @@ Direction: calm and premium, as the brief asks, and specific to the subject rath
 - **Type:** Newsreader (a screen-tuned serif) for headings at light weights; Hind for body, with Hind Vadodara for Gujarati. Both are Indian Type Foundry families with native Devanagari and Gujarati, so the three languages share proportions, and Noto is the fallback. Body is 16 px minimum; Hindi and Gujarati get extra line height for matras.
 - **One strong moment:** the booking confirmation is a printed **visit pass**: big serif time, place and map on top, a perforation, then the stub with the reminder note, calendar and change/cancel actions, and the RERA number. Everything else stays quiet.
 
-Screens (screenshots to be captured for the PDF export):
+Key screens, captured from the live app (buyer screens at phone width, 390 px; staff screens at 1280 px):
 
 1. **Landing (`/`).** One headline, one action ("Chat with us"), the two projects with their RERA numbers. No carousel or stock photos: the job of the page is to start a conversation.
+
+<p class="shots"><img src="screens/01-landing.png" alt="Landing page" width="220"></p>
+<p class="caption">Landing: one headline, one action, RERA numbers on both projects.</p>
 2. **Chat (`/chat`).** The first screen asks only which language to use, so the very first message is already in the buyer's language. Assistant text sits directly on the page (no bubble) and buyer messages get a soft tinted bubble, which reads as a conversation with a concierge rather than a support widget. "Talk to a person" is always in the header. At most three quick-reply chips. The composer is sticky, and new messages scroll into view only if the buyer is already at the bottom. The slot picker groups times by day. The contact form keeps the consent box unticked, with the plain-language line beside it.
+
+<p class="shots"><img src="screens/02-chat-answer.png" alt="Chat answering from the fact sheet" width="220"> <img src="screens/03-slot-picker.png" alt="Slot picker with real free times" width="220"></p>
+<p class="caption">Chat: a live Gemini answer from the fact sheet (left); the slot picker showing only genuinely free times (right).</p>
 3. **Visit page (`/visit/[id]`).** The same visit pass, plus "Change time" (only free slots listed) and "Cancel visit" with a confirm step. Expired links explain what to do next.
+
+<p class="shots"><img src="screens/04-visit-pass.png" alt="Visit pass" width="220"></p>
+<p class="caption">The visit pass: time, address and map, reminders, calendar, RERA number, change or cancel.</p>
 4. **Sign in.** One column, nothing else.
+
+<p class="shots"><img src="screens/05-login.png" alt="Staff sign in" width="520"></p>
+<p class="caption">Staff sign in.</p>
 5. **Leads (`/admin/leads`).** A dense but quiet table with hairline rows and no card grid; sticky filters; source tags merge when a duplicate is linked; "Not reached" is the only red. Phones are masked to the last 4 digits.
+
+<p class="shots"><img src="screens/06-leads.png" alt="Lead list" width="640"></p>
+<p class="caption">One lead list across sources, with duplicate badges and first-reply times.</p>
 6. **Lead / handoff (`/admin/leads/[id]`).** Left column for facts about the buyer and actions (status, notes, visit outcome); right column for what the assistant did (handoff summary, transcript with guard verdicts and facts used, activity).
+
+<p class="shots"><img src="screens/07-lead-handoff.png" alt="Lead and handoff" width="640"></p>
+<p class="caption">Handoff to a named executive with summary and transcript.</p>
 7. **Dashboard (`/admin/dashboard`).** Three numbers compared with the brief's targets and the "today" baseline, then the per-source table, with a thin inline bar for cost per visit. The assumed spend is labelled in a footnote under the table. The flagged-chat queue sits on the same page because reviewing it is a daily task.
+
+<p class="shots"><img src="screens/08-dashboard.png" alt="Source dashboard" width="640"></p>
+<p class="caption">Source dashboard against the brief's targets.</p>
 8. **Settings (`/admin/settings`).** Tabs for fact sheet (missing-translation filter, quotable flag, "how the assistant sees this" preview), slots (pattern generator plus per-slot toggles; booked slots show the buyer's name and ask before cancelling) and the message log.
+
+<p class="shots"><img src="screens/09-fact-sheet.png" alt="Fact sheet editor" width="640"> <img src="screens/10-message-log.png" alt="Message log" width="640"></p>
+<p class="caption">Settings: the fact sheet editor (top) and the mock WhatsApp message log with RERA numbers (bottom).</p>
 
 Every screen has loading (skeleton), empty (with the next action) and error states. Focus rings are visible everywhere, motion is limited to a single rise animation on new cards and is disabled under `prefers-reduced-motion`, and the layout works at 375 px.
 

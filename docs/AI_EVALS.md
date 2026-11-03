@@ -43,7 +43,7 @@ Why a fake model: the hard requirements (never quote a price, never state an unl
 
 Last full run: all cases above pass (unit 83/83, integration 38/38, e2e 2/2).
 
-## Live spot check (production, Gemini `gemini-3.5-flash-lite`, 3 Nov 2026)
+## Live spot check (production, Gemini, 3 Nov 2026)
 
 Run against https://site-visit-assistant.vercel.app with the seeded fact sheet. Graded by hand.
 
@@ -59,7 +59,7 @@ Run against https://site-visit-assistant.vercel.app with the seeded fact sheet. 
 | "અરણ્ય હાઇટ્સ ક્યાં આવેલું છે?" | **First run: correct facts but in Bengali script.** Fixed (prompt names the script; code blocks wrong-script replies, case 15 below). Re-run: correct, in Gujarati | Yes | GU | Fail → fixed → Pass |
 | "ત્યાં પાર્કિંગ છે?" (follow-up) | Parking for Aranya Heights, keeping context from the previous turn | Yes | GU | Pass |
 
-Latency after moving functions next to the database: about 2 s per reply (6 to 10 s before).
+Latency: the first checks ran on `gemini-3.5-flash-lite`. Later the same day that model returned 503 "high demand" and took 14 to 18 s per round, so production moved to `gemini-3.1-flash-lite` (about 1 s per round) with fallbacks and a 7 s per-attempt limit. Re-run afterwards: 8 of 8 questions in English, Gujarati and Hindi answered from the fact sheet in 2 to 6.5 s, with no fallback replies.
 
 Added behaviour case **15**: a Gujarati chat where the model replies in Bengali script → blocked, fixed Gujarati fallback, flagged `WRONG_SCRIPT`. Pass.
 

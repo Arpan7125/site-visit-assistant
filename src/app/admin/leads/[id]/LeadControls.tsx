@@ -105,7 +105,7 @@ export function SummaryEditor({ url, handoffId, summary, edited, editable }: { u
       <div className="rounded-md bg-paper p-3 text-sm">
         <p className="whitespace-pre-line">{summary}</p>
         <p className="mt-2 flex items-center justify-between text-xs text-muted">
-          <span>{edited ? "Edited by the team" : "Written by the assistant"}</span>
+          <span>{edited ? "Edited by the team" : "Generated from the lead record and chat"}</span>
           {editable && <button type="button" className="text-accent underline underline-offset-4" onClick={() => setEditing(true)}>Edit summary</button>}
         </p>
       </div>
