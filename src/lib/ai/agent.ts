@@ -166,10 +166,13 @@ async function runModelLoop(
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error("Model deadline exceeded");
+      const t0 = Date.now();
       const res = await raceAbort(
         provider.create({ system, messages, tools: TOOLS }, { signal: controller.signal, timeoutMs: remaining }),
         controller.signal,
       );
+      // Latency per model round, for tuning the deadline. No buyer content is logged.
+      console.info(`assistant model round ${round + 1}: ${Date.now() - t0} ms, ${provider.name}, stop=${res.stop_reason}`);
       if (res.stop_reason === "refusal") throw new Error("Model refused");
       const toolUses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
       const text = res.content
