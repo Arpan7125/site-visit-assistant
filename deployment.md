@@ -58,8 +58,8 @@ Integration tests refuse to run unless `DATABASE_URL_TEST` points to a local dat
 ## 2. How it is deployed
 
 - **App:** Vercel (Next.js preset). `vercel.json` sets the build command `prisma migrate deploy && prisma generate && next build`, so migrations run on each deploy.
-- **Database:** Neon Postgres (free tier). Use the pooled connection string for `DATABASE_URL`.
-- **Seed the hosted demo once:** run `pnpm db:seed` locally with `DATABASE_URL` pointing at Neon.
+- **Database:** Supabase Postgres (free tier, Mumbai). `DATABASE_URL` is the transaction pooler (port 6543, `?pgbouncer=true&connection_limit=1`) for serverless functions; `DIRECT_URL` is the session pooler (port 5432) for migrations. Any Postgres 14+ works.
+- **Seed the hosted demo once:** run `pnpm db:seed` locally with `DATABASE_URL` and `DIRECT_URL` pointing at the hosted database.
 - **Reminders:** Vercel Cron calls `GET /api/cron/reminders` every 15 minutes (`vercel.json`). Vercel sends `Authorization: Bearer $CRON_SECRET`; the route rejects anything else. It is idempotent, so manual calls are safe:
 
 ```bash
@@ -73,6 +73,7 @@ Note: Vercel's Hobby plan limits cron frequency (daily). On Hobby, reminders sti
 | Name | Purpose |
 |---|---|
 | `DATABASE_URL` | Postgres connection for the app |
+| `DIRECT_URL` | Session connection used by migrations and seeding (same as `DATABASE_URL` locally; Supabase session pooler in production) |
 | `DATABASE_URL_TEST` | Separate local Postgres database for integration tests |
 | `AUTH_SECRET` | Auth.js session encryption secret |
 | `APP_BASE_URL` | Public base URL of the app |

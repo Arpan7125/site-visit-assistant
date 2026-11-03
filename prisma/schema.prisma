@@ -5,6 +5,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Migrations need a session connection; at runtime DATABASE_URL may be a transaction pooler.
+  // Locally both point at the same database.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {

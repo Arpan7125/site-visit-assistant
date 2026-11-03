@@ -14,5 +14,5 @@ export default function setup() {
   if (!local || !pathname.endsWith("_test")) {
     throw new Error(`Refusing to run integration tests against ${hostname}${pathname}: expected a local *_test database`);
   }
-  execSync("pnpm exec prisma migrate deploy", { env: { ...process.env, DATABASE_URL: url }, stdio: "inherit" });
+  execSync("pnpm exec prisma migrate deploy", { env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url }, stdio: "inherit" });
 }
