@@ -6,10 +6,10 @@ Hiring-assessment build: quality over scope. Source of truth for requirements: t
 
 ## Stack
 - Next.js (App Router) + TypeScript, route handlers and server actions as backend
-- PostgreSQL (Docker Compose locally, Neon in production) via Prisma
+- PostgreSQL via Prisma: Docker Compose or `pnpm db:local` (embedded Postgres) locally, Supabase in production (pooled `DATABASE_URL` + `DIRECT_URL`)
 - Auth.js (NextAuth v5) credentials for staff: roles `EXECUTIVE`, `SALES_HEAD`
 - Buyers: anonymous chat session (signed cookie) + phone captured with consent
-- AI: Anthropic Messages API with tool use, behind `src/lib/ai/` provider interface (fake model in tests)
+- AI: LLM with tool use behind the `ModelProvider` interface in `src/lib/ai/`: Gemini (`gemini.ts`, live) or Claude (`provider.ts`), chosen by `AI_PROVIDER`; scripted fake model in tests
 - Tailwind CSS v4 with design tokens in `src/app/globals.css`; small hand-rolled UI primitives in `src/components/ui`
 - Zod on every input; Vitest (unit + integration against real Postgres); Playwright e2e
 
