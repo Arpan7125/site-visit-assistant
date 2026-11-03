@@ -88,6 +88,24 @@ describe("GeminiProvider fallback on capacity errors", () => {
     await expect(q.create(req, opts())).rejects.toMatchObject({ status: 400 });
   });
 
+  it("abandons a stalled attempt after its own limit and tries the next model", async () => {
+    const p = new GeminiProvider("k", "primary", ["backup"], "NONE", 50);
+    const calls: string[] = [];
+    (p as unknown as { client: { models: { generateContent: (a: { model: string; config: { abortSignal: AbortSignal } }) => unknown } } }).client = {
+      models: {
+        generateContent: ({ model, config }) => {
+          calls.push(model);
+          if (model === "backup") return Promise.resolve({ candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }] });
+          // Primary never answers; it only rejects when its attempt is aborted.
+          return new Promise((_, reject) => config.abortSignal.addEventListener("abort", () => reject(new Error("aborted"))));
+        },
+      },
+    };
+    const res = await p.create(req, opts());
+    expect(calls).toEqual(["primary", "backup"]);
+    expect(res.content[0]).toMatchObject({ text: "ok" });
+  });
+
   it("classifies capacity errors", () => {
     expect(isCapacityError(new ApiError({ message: "x", status: 503 }))).toBe(true);
     expect(isCapacityError(new ApiError({ message: "x", status: 429 }))).toBe(true);

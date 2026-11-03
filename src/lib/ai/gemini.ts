@@ -105,6 +105,7 @@ export class GeminiProvider implements ModelProvider {
     // Stable models tried in order when the primary is overloaded (503 "high demand", seen live).
     fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.1-flash-lite,gemini-3.6-flash").split(",").map((m) => m.trim()).filter(Boolean),
     private thinking = (process.env.GEMINI_THINKING || "LOW").toUpperCase(),
+    private attemptMs = Number(process.env.GEMINI_ATTEMPT_MS) || 7_000,
   ) {
     this.models = [model, ...fallbacks.filter((m) => m !== model)];
     this.name = `gemini:${model}`;
@@ -116,6 +117,12 @@ export class GeminiProvider implements ModelProvider {
     const level = (ThinkingLevel as Record<string, ThinkingLevel>)[this.thinking];
     let lastError: unknown;
     for (const model of this.models) {
+      // Each attempt gets its own limit, so one stalled request (seen live: no reply for 20 s while
+      // neighbouring calls took ~1 s) falls through to the next model instead of using up the turn.
+      const attempt = new AbortController();
+      const onParentAbort = () => attempt.abort();
+      opts.signal.addEventListener("abort", onParentAbort, { once: true });
+      const timer = setTimeout(() => attempt.abort(), this.attemptMs);
       try {
         const res = await this.client.models.generateContent({
           model,
@@ -124,18 +131,23 @@ export class GeminiProvider implements ModelProvider {
             systemInstruction: req.system,
             tools: [{ functionDeclarations: toGeminiTools(req.tools) }],
             maxOutputTokens: req.maxTokens ?? 4096,
-            // The chat deadline is enforced by the abort signal. Gemini rejects server deadlines
-            // under 10 s, so no httpOptions.timeout is sent; the SDK does not retry by itself.
-            abortSignal: opts.signal,
+            // Deadlines are enforced by abort signals. Gemini rejects server deadlines under 10 s,
+            // so no httpOptions.timeout is sent; the SDK does not retry by itself.
+            abortSignal: attempt.signal,
             ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
           },
         });
         const candidate = res.candidates?.[0];
         return fromGeminiParts(candidate?.content?.parts ?? [], candidate?.finishReason);
       } catch (err) {
-        if (!isCapacityError(err) || opts.signal.aborted) throw err;
-        console.warn(`gemini ${model} unavailable (${(err as ApiError).status}); trying next model`);
+        if (opts.signal.aborted) throw err; // the whole turn is out of time
+        const stalled = attempt.signal.aborted;
+        if (!stalled && !isCapacityError(err)) throw err;
+        console.warn(`gemini ${model} ${stalled ? `stalled over ${this.attemptMs} ms` : `unavailable (${(err as ApiError).status})`}; trying next model`);
         lastError = err;
+      } finally {
+        clearTimeout(timer);
+        opts.signal.removeEventListener("abort", onParentAbort);
       }
     }
     throw lastError;
