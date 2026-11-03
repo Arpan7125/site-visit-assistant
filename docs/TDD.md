@@ -67,7 +67,7 @@ flowchart LR
   C -- JSON --> API
   LL -- JSON --> API
   API --> AG --> DOM
-  AG -- tool use --> CL[(Claude API)]
+  AG -- tool use --> CL[("LLM API (Gemini live, Claude supported)")]
   DOM --> PG[(Postgres / Supabase)]
   CRON[GitHub Actions every 15 min + Vercel Cron daily] -- Bearer secret --> API
   DOM -- mock --> LOG[Message log]
@@ -121,7 +121,7 @@ sequenceDiagram
   participant B as Buyer
   participant API as /api/chat/message
   participant AG as Agent
-  participant M as Claude
+  participant M as LLM (Gemini)
   participant DB as Postgres
   B->>API: text
   API->>AG: handleBuyerMessage

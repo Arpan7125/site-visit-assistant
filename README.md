@@ -36,6 +36,6 @@ Demo logins and a 3-minute walkthrough: [deployment.md](deployment.md).
 
 ## Stack
 
-Next.js 15 (App Router, TypeScript), PostgreSQL with Prisma, Auth.js, Claude via the Anthropic SDK (tool use), Tailwind CSS, Zod, Vitest, Playwright. Deployed on Vercel with Supabase Postgres.
+Next.js 15 (App Router, TypeScript), PostgreSQL with Prisma, Auth.js, an LLM with tool use behind one provider interface (Google Gemini live; Claude via the Anthropic SDK also supported), Tailwind CSS, Zod, Vitest, Playwright. Deployed on Vercel with Supabase Postgres.
 
 All people, phone numbers, projects and RERA numbers in the demo data are fictional.
