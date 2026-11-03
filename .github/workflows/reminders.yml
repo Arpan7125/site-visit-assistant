@@ -1,0 +1,24 @@
+# Vercel Hobby allows only daily crons, so the 15-minute reminder run is triggered from here.
+# The route is idempotent: overlapping or repeated calls never send a reminder twice.
+name: Reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the reminder route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET repository secret is not set; skipping."; exit 0; fi
+          APP_URL="${APP_URL:-https://site-visit-assistant.vercel.app}"
+          curl --fail-with-body -sS --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/reminders"
