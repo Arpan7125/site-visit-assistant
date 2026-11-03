@@ -13,6 +13,8 @@ Built for a hiring brief: "Company A", an Ahmedabad developer with two projects,
 
 It never quotes a final price or discount: those questions go to a person, and a code-level guard blocks any reply with a price that isn't a quotable "starting from" entry.
 
+**Live demo:** https://site-visit-assistant.vercel.app (staff logins in [deployment.md](deployment.md#4-demo-logins-fictional-users-demo-passwords-only))
+
 ## Quick start
 
 ```bash
@@ -34,6 +36,6 @@ Demo logins and a 3-minute walkthrough: [deployment.md](deployment.md).
 
 ## Stack
 
-Next.js 15 (App Router, TypeScript), PostgreSQL with Prisma, Auth.js, Claude via the Anthropic SDK (tool use), Tailwind CSS, Zod, Vitest, Playwright. Deploys to Vercel + Neon.
+Next.js 15 (App Router, TypeScript), PostgreSQL with Prisma, Auth.js, Claude via the Anthropic SDK (tool use), Tailwind CSS, Zod, Vitest, Playwright. Deployed on Vercel with Supabase Postgres.
 
 All people, phone numbers, projects and RERA numbers in the demo data are fictional.

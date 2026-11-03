@@ -57,16 +57,22 @@ Integration tests refuse to run unless `DATABASE_URL_TEST` points to a local dat
 
 ## 2. How it is deployed
 
+Live: https://site-visit-assistant.vercel.app. Repository: https://github.com/Arpan7125/site-visit-assistant. Every push to `main` deploys to production.
+
 - **App:** Vercel (Next.js preset). `vercel.json` sets the build command `prisma migrate deploy && prisma generate && next build`, so migrations run on each deploy.
-- **Database:** Supabase Postgres (free tier, Mumbai). `DATABASE_URL` is the transaction pooler (port 6543, `?pgbouncer=true&connection_limit=1`) for serverless functions; `DIRECT_URL` is the session pooler (port 5432) for migrations. Any Postgres 14+ works.
-- **Seed the hosted demo once:** run `pnpm db:seed` locally with `DATABASE_URL` and `DIRECT_URL` pointing at the hosted database.
-- **Reminders:** Vercel Cron calls `GET /api/cron/reminders` every 15 minutes (`vercel.json`). Vercel sends `Authorization: Bearer $CRON_SECRET`; the route rejects anything else. It is idempotent, so manual calls are safe:
+- **Database:** Supabase Postgres (free tier, eu-west-1). `DATABASE_URL` is the transaction pooler (port 6543, `?pgbouncer=true&connection_limit=1`) for serverless functions; `DIRECT_URL` is the session pooler (port 5432) for migrations. Any Postgres 14+ works.
+- **Seed the hosted demo once:** `scripts/supabase-env.mjs` reads the git-ignored `.env.supabase` (`SUPABASE_DB_PASSWORD`, `SUPABASE_POOLER_HOST`, `SUPABASE_DB_USER`), URL-encodes the password and runs a command with both URLs set, without printing them:
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/reminders
+node scripts/supabase-env.mjs run "pnpm exec prisma migrate deploy"
+node scripts/supabase-env.mjs run --direct "pnpm db:seed -- --reset"
 ```
 
-Note: Vercel's Hobby plan limits cron frequency (daily). On Hobby, reminders still go out at the next run; use Pro or an external scheduler for 15-minute precision.
+- **Reminders:** `.github/workflows/reminders.yml` calls `GET /api/cron/reminders` every 15 minutes with `Authorization: Bearer $CRON_SECRET`. Set `CRON_SECRET` as a GitHub repository secret (same value as on Vercel); the optional repository variable `APP_URL` defaults to the live URL. Vercel Hobby allows only daily crons, so `vercel.json` keeps a daily Vercel Cron as a safety net. The route rejects anything without the secret and is idempotent, so overlapping or manual calls are safe:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://site-visit-assistant.vercel.app/api/cron/reminders
+```
 
 ## 3. Environment variables (names only)
 

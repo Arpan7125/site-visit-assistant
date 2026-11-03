@@ -2,8 +2,8 @@
 
 ## 0. Links
 
-- **GitHub:** _to be added when the repository is published_
-- **Live app:** _to be added after deployment (Vercel + Neon)_
+- **GitHub:** https://github.com/Arpan7125/site-visit-assistant
+- **Live app:** https://site-visit-assistant.vercel.app (Vercel + Supabase Postgres, eu-west-1)
 - Local setup, environment variables and demo logins: `deployment.md`
 
 ## 1. Problem and goals
@@ -68,8 +68,8 @@ flowchart LR
   LL -- JSON --> API
   API --> AG --> DOM
   AG -- tool use --> CL[(Claude API)]
-  DOM --> PG[(Postgres / Neon)]
-  CRON[Vercel Cron] -- Bearer secret --> API
+  DOM --> PG[(Postgres / Supabase)]
+  CRON[GitHub Actions every 15 min + Vercel Cron daily] -- Bearer secret --> API
   DOM -- mock --> LOG[Message log]
 ```
 
@@ -79,6 +79,7 @@ flowchart LR
 | PostgreSQL + Prisma | Row locks and partial unique indexes are what make "no double booking" provable. Prisma gives typed queries and migrations. | MongoDB/Firestore: no partial unique index or `SELECT … FOR UPDATE`; correctness would rest on app code alone. |
 | Claude with tool use behind `ModelProvider` | Native tool calling for search/slots/booking; the interface lets tests inject a scripted fake. | Free-form prompting with regex parsing: brittle and untestable. |
 | Deterministic intercepts + output guard | The brief's AI rules are hard requirements, so they are enforced in code before and after the model. | Prompt-only rules: cannot be proven. |
+| Supabase Postgres via its poolers | Serverless functions use the transaction pooler (one connection each); migrations and seeding use the session pooler (Prisma `directUrl`). Row locks and the partial index behave exactly as in local Postgres; a live booking and cancellation were checked after deploy. | Neon (planned, but its terms were not accepted); any Postgres 14+ works. |
 | Auth.js credentials, JWT sessions | Small staff list, no external IdP needed for the demo. | SSO (Google Workspace): better for production; noted in "next". |
 | Tailwind with tokens | Tokens defined once in `globals.css`; same tokens on buyer and staff screens. | Component kit: shadcn/ui was planned, but the screens needed only a handful of primitives (`components/ui.tsx`), so pulling in Radix was not worth it. |
 
@@ -285,5 +286,5 @@ Next:
 - Fact search is keyword and topic matching (with synonyms in three languages), not embeddings; unusual phrasings may miss and fall back to a handoff, which is the safe failure.
 - Rate limiting is in memory, per server instance.
 - CSP allows inline scripts (Next.js bootstrap) because nonces are not set up.
-- Vercel Hobby runs cron daily; 15-minute reminders need Pro or an external scheduler.
+- Vercel Hobby allows only a daily cron, so the 15-minute reminder run comes from a scheduled GitHub Actions workflow. GitHub can delay scheduled runs under load, so a 2-hour reminder may go out a little late.
 - Romanised Hindi/Gujarati is answered in English unless the buyer switches language.
