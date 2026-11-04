@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity";
+import { STANDARD_SLOT_PATTERN } from "@/lib/config";
 import { DAY, istDateKey, istToUtc, istWeekday } from "@/lib/time";
 import { cancelVisit } from "./book";
 
@@ -17,8 +18,8 @@ export const slotPatternSchema = z
   .strict()
   .refine((p) => p.endHour > p.startHour, { message: "End time must be after start time", path: ["endHour"] });
 
-/** Generate slots by weekly pattern. Existing slots at the same time are kept (unique per project/time). */
-export async function generateSlots(db: PrismaClient, p: z.infer<typeof slotPatternSchema>, actorId: string, now = new Date()) {
+/** Future slot times for a weekly pattern (IST). */
+function planSlots(p: z.infer<typeof slotPatternSchema>, now: Date) {
   const data: { projectId: string; startsAt: Date; endsAt: Date }[] = [];
   const firstDay = istToUtc(p.fromDate, 12);
   for (let d = 0; d < p.days; d++) {
@@ -30,9 +31,34 @@ export async function generateSlots(db: PrismaClient, p: z.infer<typeof slotPatt
       data.push({ projectId: p.projectId, startsAt, endsAt: new Date(startsAt.getTime() + p.minutes * 60_000) });
     }
   }
+  return data;
+}
+
+/** Generate slots by weekly pattern. Existing slots at the same time are kept (unique per project/time). */
+export async function generateSlots(db: PrismaClient, p: z.infer<typeof slotPatternSchema>, actorId: string, now = new Date()) {
+  const data = planSlots(p, now);
   const res = await db.visitSlot.createMany({ data, skipDuplicates: true });
   await logActivity(db, { actorId, action: "slots.generated", entityType: "Project", entityId: p.projectId, meta: { requested: data.length, created: res.count } });
   return { requested: data.length, created: res.count };
+}
+
+/**
+ * Keep the standard pattern (Assumption A4) open for the next `days` days for every project,
+ * so buyers always see free times. Runs with the reminder job. Only adds missing slots:
+ * a slot the sales head disabled stays disabled, and nothing is logged when nothing changes.
+ */
+export async function topUpSlots(db: PrismaClient, now = new Date()) {
+  const projects = await db.project.findMany({ select: { id: true } });
+  let created = 0;
+  for (const { id } of projects) {
+    const data = planSlots({ ...STANDARD_SLOT_PATTERN, projectId: id, fromDate: istDateKey(now) }, now);
+    const res = await db.visitSlot.createMany({ data, skipDuplicates: true });
+    if (res.count) {
+      created += res.count;
+      await logActivity(db, { actorId: null, action: "slots.topped_up", entityType: "Project", entityId: id, meta: { created: res.count } });
+    }
+  }
+  return { created };
 }
 
 export class SlotHasBooking extends Error {

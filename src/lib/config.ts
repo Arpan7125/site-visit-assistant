@@ -22,5 +22,11 @@ export const SOURCE_LABEL: Record<LeadSource, string> = {
 
 export const SOURCES = Object.keys(SOURCE_LABEL) as LeadSource[];
 
+/**
+ * Assumption A4: site visits Tuesday to Sunday (Monday closed), 10:00–17:00 IST, one-hour slots.
+ * The reminder job keeps this pattern open from today through the next 14 days.
+ */
+export const STANDARD_SLOT_PATTERN = { days: 15, weekdays: [0, 2, 3, 4, 5, 6], startHour: 10, endHour: 17, minutes: 60 as const };
+
 /** Brief's success metrics, shown as targets on the dashboard. */
 export const TARGETS = { medianFirstResponseMin: 5, notReached48hPct: 5, leadToVisitPct: 8 };

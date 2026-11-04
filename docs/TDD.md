@@ -167,6 +167,8 @@ sequenceDiagram
 
 Cancelling or rescheduling cancels pending rows in the same transaction; a reschedule creates new ones for the new time.
 
+The same job also tops up visit slots: it keeps the standard pattern (Tuesday to Sunday, 10:00 to 17:00 IST, hourly) open for the next 14 days for every project. It only adds missing slots, never re-enables one the sales head switched off, and logs only when it adds something. Without it the demo would run out of free times two weeks after seeding.
+
 ### Opt-out
 
 "STOP", "band karo", "बंद करो", "બંધ કરો" and variants (whole-message match, so "bus stop" is not an opt-out) set `optedOut`, withdraw consent, cancel pending reminders, log it and confirm in the buyer's language. The sender re-checks at send time, so an opt-out between booking and reminder is honoured.

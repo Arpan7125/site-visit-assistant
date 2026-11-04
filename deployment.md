@@ -68,7 +68,7 @@ node scripts/supabase-env.mjs run "pnpm exec prisma migrate deploy"
 node scripts/supabase-env.mjs run --direct "pnpm db:seed -- --reset"
 ```
 
-- **Reminders:** `.github/workflows/reminders.yml` calls `GET /api/cron/reminders` every 15 minutes with `Authorization: Bearer $CRON_SECRET`. Set `CRON_SECRET` as a GitHub repository secret (same value as on Vercel); the optional repository variable `APP_URL` defaults to the live URL. Vercel Hobby allows only daily crons, so `vercel.json` keeps a daily Vercel Cron as a safety net. The route rejects anything without the secret and is idempotent, so overlapping or manual calls are safe:
+- **Reminders:** `.github/workflows/reminders.yml` calls `GET /api/cron/reminders` every 15 minutes (it sends due reminders and keeps the next 14 days of visit slots open) with `Authorization: Bearer $CRON_SECRET`. Set `CRON_SECRET` as a GitHub repository secret (same value as on Vercel); the optional repository variable `APP_URL` defaults to the live URL. Vercel Hobby allows only daily crons, so `vercel.json` keeps a daily Vercel Cron as a safety net. The route rejects anything without the secret and is idempotent, so overlapping or manual calls are safe:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://site-visit-assistant.vercel.app/api/cron/reminders

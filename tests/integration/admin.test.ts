@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { bookVisit } from "@/lib/booking/book";
-import { SlotHasBooking, generateSlots, setSlotActive } from "@/lib/booking/admin";
+import { SlotHasBooking, generateSlots, setSlotActive, topUpSlots } from "@/lib/booking/admin";
 import { getFreeSlots } from "@/lib/booking/slots";
 import { deleteFact, saveFact } from "@/lib/facts/admin";
 import { searchFacts } from "@/lib/facts/search";
@@ -43,6 +43,37 @@ describe("slot manager", () => {
     expect((await db.visit.findUniqueOrThrow({ where: { id: booked.visit.id } })).status).toBe("CANCELLED");
     expect(await db.reminderOutbox.count({ where: { visitId: booked.visit.id, status: "PENDING" } })).toBe(0);
     expect(await getFreeSlots(db, { projectId: p.id, from: new Date(), to: new Date(Date.now() + 7 * DAY) })).toHaveLength(0);
+  });
+});
+
+describe("rolling slot top-up (run by the reminder job)", () => {
+  // A fixed Wednesday 09:00 IST, so the day count is deterministic.
+  const now = istToUtc("2026-11-04", 9);
+
+  it("opens two weeks of slots without Mondays, and a second run adds nothing", async () => {
+    await makeProject("p1");
+    await makeProject("p2");
+    const first = await topUpSlots(db, now);
+    const second = await topUpSlots(db, now);
+
+    // 4 Nov to 18 Nov is 15 days; 2 Mondays (9 and 16 Nov) are closed: 13 days × 7 slots × 2 projects.
+    expect(first.created).toBe(13 * 7 * 2);
+    expect(second.created).toBe(0);
+    const slots = await db.visitSlot.findMany();
+    expect(slots.every((s) => istWeekday(s.startsAt) !== 1 && s.startsAt > now)).toBe(true);
+    expect(await db.activityLog.count({ where: { action: "slots.topped_up" } })).toBe(2);
+  });
+
+  it("never re-enables a slot the sales head switched off, and fills days that roll into view", async () => {
+    const p = await makeProject("p1");
+    const head = await makeExec("Head", "SALES_HEAD");
+    await topUpSlots(db, now);
+    const slot = await db.visitSlot.findFirstOrThrow({ where: { projectId: p.id }, orderBy: { startsAt: "asc" } });
+    await setSlotActive(db, { slotId: slot.id, active: false, actorId: head.id });
+
+    const nextDay = await topUpSlots(db, new Date(now.getTime() + DAY));
+    expect(nextDay.created).toBe(7); // Thursday 19 Nov comes into the window
+    expect((await db.visitSlot.findUniqueOrThrow({ where: { id: slot.id } })).isActive).toBe(false);
   });
 });
 
